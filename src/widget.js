@@ -24,7 +24,7 @@ var widget = function (plugin) {
       plugin.validTracks.forEach(function (track, i) {
       var option = document.createElement('option');
       option.value = i;
-      option.textContent = track.label() + ' (' + track.language() + ')';
+      option.textContent = track.label + ' (' + track.language + ')';
       selector.appendChild(option);
     });
     selector.addEventListener('change', function (e) {
@@ -63,21 +63,25 @@ var widget = function (plugin) {
     var line, i;
     var fragment = document.createDocumentFragment();
     var createTranscript = function () {
-      var cues = track.cues();
-      for (i = 0; i < cues.length; i++) {
-        line = createLine(cues[i]);
-        fragment.appendChild(line);
+      var cues = track.cues;
+
+      if (!cues || cues.length === 0) {
+        // TODO see if we can figure out a better way of doing this;
+        //      same issue as https://github.com/videojs/video.js/issues/1864
+        window.setTimeout(function() {
+          createTranscript();
+        }, 100);
+      } else {
+        for (i = 0; i < cues.length; i++) {
+          line = createLine(cues[i]);
+          fragment.appendChild(line);
+        }
+        body.innerHTML = '';
+        body.appendChild(fragment);
+        body.setAttribute('lang', track.language);
       }
-      body.innerHTML = '';
-      body.appendChild(fragment);
-      body.setAttribute('lang', track.language());
     };
-    if (track.readyState() !==2) {
-      track.load();
-      track.on('loaded', createTranscript);
-    } else {
-      createTranscript();
-    }
+    createTranscript();
     body.scroll = scroller(body);
     body.addEventListener('click', clickToSeekHandler);
     return body;

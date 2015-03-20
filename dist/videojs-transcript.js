@@ -1,5 +1,5 @@
-/*! videojs-transcript - v0.7.1 - 2014-10-10
-* Copyright (c) 2014 Matthew Walsh; Licensed MIT */
+/*! videojs-transcript - v0.7.1 - 2015-03-19
+* Copyright (c) 2015 Matthew Walsh; Licensed MIT */
 (function (window, videojs) {
   'use strict';
 
@@ -9,7 +9,7 @@
 // https://gist.github.com/paulirish/1579671
 (function() {
   var lastTime = 0;
-  var vendors = ['ms', 'moz', 'webkit', 'o'];
+  var vendors = ['moz', 'webkit'];
   for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
     window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
     window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
@@ -300,16 +300,16 @@ var trackList = function (plugin) {
     get: function () {
       var validTracks = [];
       my.tracks = my.player.textTracks();
-      my.tracks.forEach(function (track) {
-        if (track.kind() === 'captions' || track.kind() === 'subtitles') {
-          validTracks.push(track);
+      for (var i=0; i<my.tracks.length; i++) {
+        if (my.tracks[i].kind === 'captions' || my.tracks[i].kind === 'subtitles') {
+          validTracks.push(my.tracks[i]);
         }
-      });
+      }
       return validTracks;
     },
     active: function (tracks) {
       tracks.forEach(function (track) {
-        if (track.mode() === 2) {
+        if (track.mode === 'showing') {
           activeTrack = track;
           return track;
         }
@@ -342,7 +342,7 @@ var widget = function (plugin) {
       plugin.validTracks.forEach(function (track, i) {
       var option = document.createElement('option');
       option.value = i;
-      option.textContent = track.label() + ' (' + track.language() + ')';
+      option.textContent = track.label + ' (' + track.language + ')';
       selector.appendChild(option);
     });
     selector.addEventListener('change', function (e) {
@@ -381,21 +381,25 @@ var widget = function (plugin) {
     var line, i;
     var fragment = document.createDocumentFragment();
     var createTranscript = function () {
-      var cues = track.cues();
-      for (i = 0; i < cues.length; i++) {
-        line = createLine(cues[i]);
-        fragment.appendChild(line);
+      var cues = track.cues;
+
+      if (!cues || cues.length === 0) {
+        // TODO see if we can figure out a better way of doing this;
+        //      same issue as https://github.com/videojs/video.js/issues/1864
+        window.setTimeout(function() {
+          createTranscript();
+        }, 100);
+      } else {
+        for (i = 0; i < cues.length; i++) {
+          line = createLine(cues[i]);
+          fragment.appendChild(line);
+        }
+        body.innerHTML = '';
+        body.appendChild(fragment);
+        body.setAttribute('lang', track.language);
       }
-      body.innerHTML = '';
-      body.appendChild(fragment);
-      body.setAttribute('lang', track.language());
     };
-    if (track.readyState() !==2) {
-      track.load();
-      track.on('loaded', createTranscript);
-    } else {
-      createTranscript();
-    }
+    createTranscript();
     body.scroll = scroller(body);
     body.addEventListener('click', clickToSeekHandler);
     return body;
